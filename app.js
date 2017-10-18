@@ -12,7 +12,6 @@ const routes = require('./routes/index');
 app.use('/', routes);
 
 // error handler
-// define as the last app.use callback
 app.use((err, req, res, next) => {
   res.status(err.status || 500)
     .json({
