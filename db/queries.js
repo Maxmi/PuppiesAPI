@@ -1,98 +1,44 @@
-const options = {};
+const pgp = require('pg-promise')();
+const monitor = require('pg-monitor');
 
-const pgp = require('pg-promise')(options);
-
-const connection_options = {
+const connectionOptions = {
   host: 'localhost',
   port: 5432,
-  database: process.env.NODE_ENV === 'test' ? 'puppies_test' : 'puppies' 
+  database: process.env.NODE_ENV === 'test' ? 'puppies_test' : 'puppies'
 }
 
+const db = pgp(connectionOptions);
 
-const db = pgp(connection_options);
+const getAllPuppies = () => {
+  return db.any('SELECT * FROM pups');
+};
 
-// query functions
-function getAllPuppies(req, res, next) {
-  db.any('SELECT * FROM pups')
-    .then((data) => {
-      res.status(200)
-        .json({
-          status: 'success',
-          data: data,
-          message: 'Retrieved ALL puppies'
-        });
-    })
-    .catch((err) => {
-      return next(err);
-    })
+const getSinglePuppy = id => {
+  return db.one('SELECT * FROM pups WHERE id=$1', [id]);
+};
+
+const createPuppy = (name, breed, age, gender) => {
+  return db.none('INSERT INTO pups (name, breed, age, gender)' +
+    'VALUES ($1, $2, $3, $4)', [name, breed, age, gender]);
+};
+
+const updatePuppy = (name, breed, age, gender, id) => {
+  return db.none('UPDATE pups SET name=$1, breed=$2, age=$3, gender=$4' + 
+'WHERE id=$5', [name, breed, age, gender, id]);
+};
+
+const removePuppy = id => {
+    return db.result('DELETE FROM pups WHERE id=$1', [id]);
 }
 
-function getSinglePuppy(req, res, next) {
-  const pupID = Number(req.params.id);
-  db.one('SELECT * FROM pups WHERE id = $1', pupID)
-    .then((data) => {
-      res.status(200)
-        .json({
-          status: 'success',
-          data: data,
-          message: 'Retrieved ONE puppy'
-        });
-    })
-    .catch((err) => {
-      return next(err);
-    });
-}
-
-function createPuppy(req, res, next) {
-  req.body.age = Number(req.body.age);
-  db.none('INSERT INTO pups (name, breed, age, gender)' +
-      'VALUES (${name}, ${breed}, ${age}, ${gender})',
-      req.body)
-    .then(() => {
-      res.status(200)
-        .json({
-          status: 'success',
-          message: 'Inserted one puppy'
-        });
-    })
-    .catch((err) => {
-      return next(err);
-    });
-}
-
-function updatePuppy(req, res, next) {
-  db.none('UPDATE pups SET name=$1, breed=$2, age=$3, gender=$4 WHERE id=$5', [req.body.name, req.body.breed, Number(req.body.age), req.body.gender, Number(req.params.id)])
-    .then(() => {
-      res.status(200)
-        .json({
-          status: 'success',
-          message: 'Updated puppy'
-        });
-    })
-    .catch((err) => {
-      return next(err);
-    });
-}
-
-function removePuppy(req, res, next) {
-  var pupID = parseInt(req.params.id);
-  db.result('delete from pups where id = $1', pupID)
-    .then(function(result) {
-      res.status(200)
-        .json({
-          status: 'success',
-          message: `Removed ${result.rowCount} puppy`
-        });
-    })
-    .catch(function(err) {
-      return next(err);
-    });
-}
+const closeConnection = ()  => {
+  pgp.end();
+};
 
 module.exports = {
-  getAllPuppies: getAllPuppies,
-  getSinglePuppy: getSinglePuppy,
-  createPuppy: createPuppy,
-  updatePuppy: updatePuppy,
-  removePuppy: removePuppy
+  getAllPuppies,
+  getSinglePuppy,
+  createPuppy,
+  updatePuppy,
+  removePuppy
 };
